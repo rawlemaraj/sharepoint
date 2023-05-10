@@ -1,24 +1,17 @@
-from office365.runtime.auth.authentication_context import AuthenticationContext
-from office365.sharepoint.client_context import ClientContext
-from office365.sharepoint.files.file import File
+import requests
+from requests_ntlm import HttpNtlmAuth
+from getpass import getpass
 
-url = 'https://yoursite.sharepoint.com/'
-username = 'username'
-password = 'password'
-relative_url = '/Shared Documents/filename.docx'
+sharepoint_url = 'http://sharepoint-site/path/to/your/file.docx'
+username = 'domain\\username'
+password = getpass('Enter your password: ')
 
-context_auth = AuthenticationContext(url)
-if context_auth.acquire_token_for_user(username, password):
-    client_context = ClientContext(url, context_auth)
-    web = client_context.web
-    client_context.load(web)
-    client_context.execute_query()
-    print(f'Connected to {web.properties["Url"]}')
+response = requests.get(sharepoint_url, auth=HttpNtlmAuth(username, password), stream=True)
 
-    download_path = "./filename.docx"
-    with open(download_path, "wb") as local_file:
-        File.open_binary(client_context, relative_url, local_file)
-
-    print(f"File downloaded to {download_path}")
+if response.status_code == 200:
+    with open('filename.docx', 'wb') as file:
+        for chunk in response.iter_content(chunk_size=128):
+            file.write(chunk)
+    print('File downloaded successfully.')
 else:
-    print(context_auth.get_last_error())
+    print('Failed to download file. Status code:', response.status_code)
