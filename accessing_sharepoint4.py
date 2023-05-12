@@ -1,27 +1,34 @@
-import requests
-from requests_ntlm import HttpNtlmAuth
+from shareplum import Site
+from shareplum import Office365
+from shareplum.site import Version
 
-# Your SharePoint URL, library and file
-sharepoint_url = 'http://sharepoint_url'
-document_library = 'DocumentLibrary'
-file_name = 'filename.txt'
+# Set your SharePoint and file details
+sharepoint_url = 'https://sharepoint2019site.com'
+site_url = 'https://sharepoint2019site.com/sites/my-site'
+folder_path = '/Shared Documents/my-folder'
+file_name = 'my-file.xlsx'
+destination_folder = '/path/to/save/file'
 
-# Create the URL for the file
-file_url = f'{sharepoint_url}/{document_library}/{file_name}'
-
-# Your credentials
-username = 'domain\\username'
+# Set your SharePoint username and password
+username = 'username'
 password = 'password'
 
-# Create a session and authenticate
-session = requests.Session()
-session.auth = HttpNtlmAuth(username, password)
+# Set the SharePoint site version
+version = Version.v2019
 
-# Get the file
-response = session.get(file_url, stream=True)
+# Authenticate with SharePoint
+authcookie = Office365(sharepoint_url, username=username, password=password).GetCookies()
+site = Site(site_url, version=version, authcookie=authcookie)
 
-# Write the file
-with open(file_name, 'wb') as out_file:
-    for chunk in response.iter_content(chunk_size=1024):
-        if chunk:
-            out_file.write(chunk)
+# Get the folder
+folder = site.Folder(folder_path)
+
+# Download the file
+file_content = folder.get_file(file_name)
+
+# Save the file to the specified folder
+local_file_path = os.path.join(destination_folder, file_name)
+with open(local_file_path, 'wb') as f:
+    f.write(file_content)
+
+print(f'File downloaded successfully and saved to {local_file_path}')
