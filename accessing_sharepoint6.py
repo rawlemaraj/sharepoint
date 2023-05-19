@@ -4,6 +4,9 @@ from shareplum.site import Version
 from requests_ntlm import HttpNtlmAuth
 import requests
 
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 # setup parameters
 username = 'username'  # username for SharePoint
 password = 'password'  # password for SharePoint
@@ -20,7 +23,7 @@ authcookie = Office365(site_url, username=username, password=password).GetCookie
 site = Site(site_url, version=Version.v2019, authcookie=authcookie)
 
 # Open the SharePoint file
-response = session.get(file_url, stream=True)
+response = session.get(file_url, stream=True, verify=False)
 
 # Save the file locally
 with open(local_file_path, 'wb') as out_file:
