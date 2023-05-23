@@ -1,11 +1,12 @@
 - name: Download file from SharePoint
   hosts: localhost
+  gather_facts: false
   vars:
     sharepoint_url: "https://example.sharepoint.com/sites/mysite"
     file_path: "/Shared%20Documents/example.txt"
     username: "exampleuser"
     password: "examplepassword"
-    download_directory: "/home/user/downloads"
+    download_directory: "/path/to/local/directory"
   tasks:
     - name: Get authentication cookies
       uri:
@@ -13,11 +14,24 @@
         method: POST
         user: "{{ username }}"
         password: "{{ password }}"
+        force_basic_auth: yes
         return_content: yes
       register: auth_result
+
     - name: Download file
-      get_url:
+      uri:
         url: "{{ sharepoint_url }}{{ file_path }}"
+        method: GET
         headers:
           Cookie: "{{ auth_result.cookies['FedAuth'] }}; {{ auth_result.cookies['rtFa'] }}"
         dest: "{{ download_directory }}/example.txt"
+        force_basic_auth: yes
+      register: file_result
+
+    - name: Display file download status
+      debug:
+        var: file_result.status
+
+    - name: Display file content
+      debug:
+        var: file_result.content
