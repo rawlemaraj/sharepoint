@@ -1,4 +1,5 @@
 import os
+import time
 from requests import Session
 from requests_ntlm import HttpNtlmAuth
 
@@ -24,6 +25,14 @@ try:
     contextinfo = contextinfo_response.json()
     form_digest_value = contextinfo['d']['GetContextWebInformation']['FormDigestValue']
 
+    # URL for checkout operation
+    checkout_url = f"{sharepoint_url}/{site_url}/_api/web/GetFileByServerRelativeUrl('{folder_path}/{remote_file_name}')/CheckOut()"
+
+    # Attempt to checkout the file
+    response = session.post(checkout_url, headers={'Accept': 'application/json;odata=verbose', 'X-RequestDigest': form_digest_value}, verify=False)
+    print('Checkout status code:', response.status_code)
+    print('Checkout response:', response.text)
+
     # URL to the folder where you want to upload the file
     upload_url = f"{sharepoint_url}/{site_url}/_api/web/GetFolderByServerRelativeUrl('{folder_path}')/Files/add(url='{remote_file_name}',overwrite=true)"
 
@@ -47,32 +56,23 @@ try:
         response_json = response.json()
         file_server_relative_url = response_json['d']['ServerRelativeUrl']
 
-        # URL to check out the uploaded file
-        checkout_url = f"{sharepoint_url}/{site_url}/_api/web/GetFileByServerRelativeUrl('{file_server_relative_url}')/CheckOut()"
+        # Wait for a while before attempting check-in
+        print('Waiting for 30 seconds before attempting check-in...')
+        time.sleep(30)
 
-        # Make the POST request to check out the file
-        response = session.post(checkout_url, headers={'Accept': 'application/json;odata=verbose', 'X-RequestDigest': form_digest_value}, verify=False)
+        # URL to check in the uploaded file
+        checkin_url = f"{sharepoint_url}/{site_url}/_api/web/GetFileByServerRelativeUrl('{file_server_relative_url}')/CheckIn(comment='Checked in by script', checkintype=0)"
 
-        if response.status_code == 204:
-            print('File checked out successfully.')
+        # Make the POST request to check in the file
+        response = session.post(checkin_url, headers={'Accept': 'application/json;odata=verbose', 'X-RequestDigest': form_digest_value}, verify=False)
 
-            # URL to check in the uploaded file
-            checkin_url = f"{sharepoint_url}/{site_url}/_api/web/GetFileByServerRelativeUrl('{file_server_relative_url}')/CheckIn(comment='Checked in by script', checkintype=0)"
-
-            # Make the POST request to check in the file
-            response = session.post(checkin_url, headers={'Accept': 'application/json;odata=verbose', 'X-RequestDigest': form_digest_value}, verify=False)
-
-            print('Check-in status code:', response.status_code)
-            print('Check-in response:', response.text)
-            
-            if response.status_code == 204:
-                print('File checked in successfully.')
-            else:
-                print('Failed to check in file.')
+        print('Check-in status code:', response.status_code)
+        print('Check-in response:', response.text)
+        
+        if response.status_code == 200:
+            print('File checked in successfully.')
         else:
-            print('Failed to check out file.')
-            print('Status code:', response.status_code)
-            print('Response:', response.text)
+            print('Failed to check in file.')
     else:
         print('Failed to upload file.')
         print('Status code:', response.status_code)
