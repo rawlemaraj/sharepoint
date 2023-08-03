@@ -1,23 +1,31 @@
-from office365.runtime.auth.authentication_context import AuthenticationContext
-from office365.sharepoint.client_context import ClientContext
-from office365.sharepoint.files.file import File
+import requests
+from requests.auth import HTTPBasicAuth
+import json
 
-site_url = "<sharepoint_site_url>"
-ctx_auth = AuthenticationContext(url=site_url)
-username = "<username>"
-password = "<password>"
+url = 'https://[your-sharepoint-site-url]'
+client_id = '[client-id]'
+client_secret = '[client-secret]'
+path_to_file = '[path-to-your-file]'
 
-if ctx_auth.acquire_token_for_user(username, password):
-    ctx = ClientContext(site_url, ctx_auth)
-    web = ctx.web
-    ctx.load(web)
-    ctx.execute_query()
+# First, get the FormDigestValue
+digest_url = url + "/_api/contextinfo"
+headers = {
+    'accept': "application/json;odata=verbose"
+    }
+response = requests.post(digest_url, headers=headers, auth=HTTPBasicAuth(client_id, client_secret))
+digest_value = response.json()['d']['GetContextWebInformation']['FormDigestValue']
 
-    relative_url = "/Shared Documents/myfile.txt"
-    file = web.get_file_by_server_relative_url(relative_url)
-    file.delete_object()
-    ctx.execute_query()
+# Now, use the digest value to delete the file
+delete_url = url + f"/_api/web/GetFileByServerRelativeUrl('{path_to_file}')"
+headers = {
+    'accept': "application/json;odata=verbose",
+    'X-RequestDigest': digest_value,
+    'If-Match': "*"
+    }
+response = requests.post(delete_url, headers=headers, auth=HTTPBasicAuth(client_id, client_secret))
 
-    print("File has been deleted")
+# If the response status code is 200, the file has been deleted successfully
+if response.status_code == 200:
+    print(f"File at {path_to_file} deleted successfully!")
 else:
-    print(ctx_auth.get_last_error())
+    print(f"Failed to delete file at {path_to_file}. Response code: {response.status_code}")
